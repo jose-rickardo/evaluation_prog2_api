@@ -5,50 +5,72 @@ from starlette.responses import JSONResponse
 
 app = FastAPI()
 
+# Q1
+@app.get("/ping")
+async def ping():
+    return PlainTextResponse("pong", status_code=200)
 
-@app.get("/hello")
-def read_hello(request: Request, is_teacher: bool = None, name: str = "Non défini"):
-    accept_headers = request.headers.get("Accept")
-    if accept_headers != "text/plain":
-        return JSONResponse({"message": "Unsupported Media Type"}, status_code=400)
-    if name == "Non défini" and is_teacher is None:
-        return JSONResponse({"message": "Hello world"}, status_code=200)
-    if is_teacher is None:
-        is_teacher = False
-    if is_teacher:
-        return JSONResponse({"message": f"Hello teacher {name}"}, status_code=200)
-    else:
-        return JSONResponse({"message": f"Hello {name}"}, status_code=200)
+# Q2
+@app.get("/home", response_class=HTMLResponse)
+async def home():
+    html_content = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Home</title>
+    </head>
+    <body>
+        <h1>Welcome home!</h1>
+    </body>
+    </html>
+    """
+    return HTMLResponse(content=html_content, status_code=200)
+
+# Q3
+@app.exception_handler(404)
+async def not_found(request: Request, exc):
+    html_404 = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>404 Not Found</title>
+    </head>
+    <body>
+        <h1>404 NOT FOUND</h1>
+    </body>
+    </html>
+    """
+    return HTMLResponse(content=html_404, status_code=404)
+
+# Q4
+class posts(BaseModel):
+    autor: str
+    title:str
+    creation_datetime: datetime
+
+stocage_en_memoire_vive: List[posts] = []
+
+@app.post("/posts", liste = List[posts] , status_code=404)
+async def le_posts(posts: List[posts]):
+    stocage_en_memoire_vive.extend(posts)
+    return stocage_en_memoire_vive
+
+# Q5
+@app.get("/posts")
+async def post():
+    return JSONResponse(content=posts, status_code=200)
+
+# Q6
+@app.put("/posts")
+async def post(post: Post):
+    for i, existing in enumerate(posts):
+        if existing["title"] == post.title:
+            if existing["content"] != post.content:
+                posts[i]["content"] = post.content
+                return JSONResponse({"message": "mis à jour avec succée"}, status_code=200)
+            else:
+                return JSONResponse({"message": "Aucun changement"}, status_code=200)
+    posts.append(post.dict())
+    return JSONResponse({"message": "ajouté avec succée"}, status_code=201)
 
 
-class WelcomeRequest(BaseModel):
-    name: str
-
-
-@app.post("/welcome")
-def welcome_user(request: WelcomeRequest):
-    return {f"Bienvenue {request.name}"}
-
-
-class SecretPayload(BaseModel):
-    secret_code: int
-
-
-@app.put("/top-secret")
-def put_top_secret(request: Request, request_body: SecretPayload):
-    auth_header = request.headers.get("Authorization")
-    if auth_header != "my-secret-key":
-        return JSONResponse(
-            status_code=403,
-            content={"error": f"Unauthorized header received: {auth_header}"}
-        )
-
-    secret_code = request_body.secret_code
-    code_length = len(str(secret_code))
-    if code_length != 4:
-        return JSONResponse(
-            status_code=400,
-            content={"error": f"Le code fourni n’est pas à 4 chiffres mais {code_length} chiffres."}
-        )
-
-    return JSONResponse(content={"message": f"Voici le code {secret_code}"}, status_code=200)
