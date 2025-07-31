@@ -73,4 +73,21 @@ async def post(post: Post):
     posts.append(post.dict())
     return JSONResponse({"message": "ajouté avec succée"}, status_code=201)
 
+#bonus
+security = HTTPBasic()
+
+@app.get("/ping/auth")
+async def ping_auth(credentials: HTTPBasicCredentials = Depends(security)):
+    correct_username = secrets.compare_digest(credentials.username, "admin")
+    correct_password = secrets.compare_digest(credentials.password, "123456")
+
+    if not (correct_username and correct_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Accès refusé : identifiants invalides",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+    return PlainTextResponse("pong", status_code=200)
+
+
 
